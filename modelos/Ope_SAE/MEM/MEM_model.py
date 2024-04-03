@@ -8,6 +8,7 @@
 import streamlit as st
 from pyomo.environ import *
 import pandas as pd
+import numpy as np
 import math
 from datetime import *
 from funciones.Import_XM_data import*
@@ -16,7 +17,7 @@ from funciones.nuevo_bess import bat_param
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from bs4 import BeautifulSoup
-
+import requests 
 # In[System model]
 
 def System_import(system_data,source,date1,date2,SAE,TRM):
@@ -39,7 +40,7 @@ def System_import(system_data,source,date1,date2,SAE,TRM):
         df_Gen_P_max = Dispo_Comercial(date1,date2)
         df_Gen_P_min = Plant_offer_data('MO',date1,date2)
         df_Gen_R_max = Plant_offer_data('AGCP',date1,date2)
-        
+
         G_idx = df_Gen_Unit.index.tolist()
         B_idx = df_Bus.index.tolist()    
         Gen_map = pd.DataFrame()
@@ -155,6 +156,8 @@ def System_import(system_data,source,date1,date2,SAE,TRM):
         System_grid_data['Sys_load'] = df_Sys_Load
         System_grid_data['Sys_Reserve'] = df_Sys_Holgura
         
+        System_grid_data.to_csv('System_grid_data.csv', index=False)
+
     elif source == 'Otro':
     
         df_Sys_data = pd.read_excel(system_data, sheet_name='System_data', header=0, index_col=0)
@@ -340,7 +343,8 @@ def MEM_general_model(System_data,Modelo,Input_data,restr_list,Current_direction
     model.d = Set(initialize=D_segments, ordered=True)                                        # Segments of degradation curve
     model.p = RangeSet(0,Number_overestimating_planes-1)                                      # Overestimating planes
     model.m = RangeSet(0,Number_bits - 1)                                                     # Number of bits for binary expansion 
-         
+
+    model.i.pprint()     
     #-------------------------------------------------------------------------------------------------------------------------------------------
     # PARAMETERS
     #------------------------------------------------------------------------------------------------------------------------------------------- 
@@ -1043,7 +1047,8 @@ def MEM_general_model(System_data,Modelo,Input_data,restr_list,Current_direction
     else:
         from pyomo.opt import SolverFactory
         import pyomo.environ
-        opt = SolverFactory('glpk')
+        # opt = SolverFactory('glpk')
+        opt = SolverFactory('cplex')
         results = opt.solve(model)
         results.write()
         print("\nDisplaying Solution\n" + '-'*60)

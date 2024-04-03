@@ -3,7 +3,10 @@
 @author: Andres Felipe Penaranda Bayona
 """
 
-from funciones.pydataxm import*
+# from funciones.pydataxm import*  #XM API
+from pydataxm import*
+import pandas as pd
+
 from datetime import*
 import urllib.request
 import re
@@ -18,32 +21,32 @@ def date_data(date1,date2):
     return date_list,Hours
 
 def Procces_hourly_data(df1,date1,date2,type_id):
-    consult = ReadDB()
+    consult = pydataxm.ReadDB()
     date_list,Hours = date_data(date1,date2)
     df1.columns = Hours
     if type_id == 'Rec':
-        df = consult.request_data("ListadoRecursos", 0, date1, date2)
-        df2 = df[['Values_Code']]
+        df = consult.request_data("ListadoRecursos", "Agente", date1, date2)
+        df2 = df[['Values_code1']]
     elif type_id == 'Sis':
         df2 = pd.DataFrame()
-        df2['Values_Code'] = ['Sistema']
+        df2['Values_code1'] = ['Sistema']
     hours_count = 0
     for d in date_list:
         for h in Hours:
             Values = []
-            for g in df2['Values_Code']:
+            for g in df2['Values_code1']:
                 try:   
                     Values.append(df1.loc[(g,d),h])
                 except:
                     Values.append(0)
             df2[hours_count] = Values
             hours_count = hours_count + 1
-    df2 = df2.set_index('Values_Code')
+    df2 = df2.set_index('Values_code1')
     return df2
 
 def Dispo_Comercial(date1,date2):
-    consult = ReadDB()
-    df1 = consult.request_data("DispoCome", 0, date1, date2)
+    consult = pydataxm.ReadDB()
+    df1 = consult.request_data("DispoCome", "Recurso", date1, date2)
     df1 = df1.set_index(['Values_code', 'Date'])
     df1 = df1.drop(['Id'], axis=1)
     df1 = df1.astype(float)
@@ -52,8 +55,8 @@ def Dispo_Comercial(date1,date2):
     return df2
 
 def Precio_Oferta(date1,date2):
-    consult = ReadDB()
-    df1 = consult.request_data("PrecOferDesp", 0, date1, date2)
+    consult = pydataxm.ReadDB()
+    df1 = consult.request_data("PrecOferDesp", "Recurso", date1, date2)
     df1 = df1.set_index(['Values_code', 'Date'])
     df1 = df1.drop(['Id'], axis=1)
     df1 = df1.astype(float)
@@ -62,8 +65,8 @@ def Precio_Oferta(date1,date2):
     return df2
 
 def Demanda(date1,date2):
-    consult = ReadDB()
-    df1 = consult.request_data("DemaCome", 0, date1, date2)
+    consult = pydataxm.ReadDB()
+    df1 = consult.request_data("DemaCome", "Sistema", date1, date2)
     df1 = df1.set_index(['Values_code', 'Date'])
     df1 = df1.drop(['Id'], axis=1)
     df1 = df1.astype(float)
@@ -100,20 +103,20 @@ def extract_offer_data(data_type,date):
         day = '0{}'.format(day)
     
     if data_type == 'HolAGC':
-        
-        url_oferta = 'http://www.xm.com.co/despachoprogramado/{}-{}/dAGC{}{}.TXT'.format(year,month,month,day)
-        response_oferta = urllib.request.urlopen(url_oferta)
-        data_oferta = response_oferta.read()
-        agents_offer = data_oferta.decode("utf-8")
+        with open('Coop_MEM\dAGC0505.txt', 'r', encoding="utf-8") as file: agents_offer = file.read()        
+        # url_oferta = 'http://www.xm.com.co/despachoprogramado/{}-{}/dAGC{}{}.TXT'.format(year,month,month,day)
+        # response_oferta = urllib.request.urlopen(url_oferta)
+        # data_oferta = response_oferta.read()
+        # agents_offer = data_oferta.decode("utf-8")
         df_AGC = pd.DataFrame([x.split(',') for x in agents_offer.split('\n')])
-        DATA = df_AGC.set_index(0)
-    
+        DATA = df_AGC.set_index(0) 
+        
     else:
-
-        url_oferta = 'http://www.xm.com.co/ofertainicial/{}-{}/OFEI{}{}.txt'.format(year,month,month,day)
-        response_oferta = urllib.request.urlopen(url_oferta)
-        data_oferta = response_oferta.read()
-        agents_offer = data_oferta.decode("utf-8")
+        # url_oferta = 'http://www.xm.com.co/ofertainicial/{}-{}/OFEI{}{}.txt'.format(year,month,month,day)
+        # response_oferta = urllib.request.urlopen(url_oferta)
+        # data_oferta = response_oferta.read()
+        # agents_offer = data_oferta.decode("utf-8")
+        with open('Coop_MEM\OFEI0505.txt', 'r', encoding="utf-8") as file: agents_offer = file.read()
         df_OFEI = pd.DataFrame([x.split(';') for x in agents_offer.split('\n')])
         dic_OFEI = df_OFEI.to_dict('dict')
         none_val, agents_glb = list(dic_OFEI.items())[0]
@@ -151,15 +154,15 @@ def Plant_offer_data(data_type,date1,date2):
     
     numdays = abs((date2 - date1).days) + 1
     dates = [date1 + timedelta(days=x) for x in range(numdays)]
-    consult = ReadDB()
-    df = consult.request_data("ListadoRecursos", 0, date1, date2)
-    df2 = df[['Values_Code','Values_Name']]
+    consult = pydataxm.ReadDB()
+    df = consult.request_data("ListadoRecursos", "Agente", date1, date2)
+    df2 = df[['Values_code1','Values_Value']]
     hours_count = 0
     for d in dates:
         data = extract_offer_data(data_type,d)
         for h in list(range(0,24)):
             Values = []
-            for p in df2['Values_Name']:
+            for p in df2['Values_Value']:
                 p_name = p.replace(' ','')
                 if p_name in data.keys():
                     if data_type == 'PAP':
@@ -170,8 +173,8 @@ def Plant_offer_data(data_type,date1,date2):
                     Values.append(0)
             df2[hours_count] = Values
             hours_count = hours_count + 1
-    df2 = df2.set_index('Values_Code')
-    df2 = df2.drop(['Values_Name'], axis=1)
+    df2 = df2.set_index('Values_code1')
+    df2 = df2.drop(['Values_Value'], axis=1)
     return df2
 
 
