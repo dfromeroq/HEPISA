@@ -50,7 +50,7 @@ DATA_URL_1=(os.path.join(actual_path, 'Tablas/Tech.csv'))
 DATA_URL_2=(os.path.join(actual_path, 'Tablas/inputs_eco.csv'))
 DATA_URL_3=(os.path.join(actual_path, 'Tablas/inputs_eco_opex.csv'))
 
-@st.cache
+@st.cache_data
 def load_data1():
     data1=pd.read_csv(DATA_URL_1)
     data1=data1.set_index('Tech')
@@ -58,14 +58,14 @@ def load_data1():
 
 data1=load_data1()
 
-@st.cache
+@st.cache_data
 def load_data2():
     data2=pd.read_csv(DATA_URL_2)
     data2=data2.set_index('Tech')
     return data2
 data2=load_data2()
 
-@st.cache
+@st.cache_data
 def load_data3():
     data3=pd.read_csv(DATA_URL_3)
     data3=data3.set_index('Tech')

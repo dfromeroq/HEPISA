@@ -38,6 +38,7 @@ def System_import(system_data,source,date1,date2,SAE,TRM):
         df_Gen_PAP_cost = Plant_offer_data('PAP',date1,date2)
         df_Gen_PAP_cost = df_Gen_PAP_cost.div(TRM)
         df_Gen_P_max = Dispo_Comercial(date1,date2)
+        print(df_Gen_P_max)
         df_Gen_P_min = Plant_offer_data('MO',date1,date2)
         df_Gen_R_max = Plant_offer_data('AGCP',date1,date2)
 
@@ -61,7 +62,7 @@ def System_import(system_data,source,date1,date2,SAE,TRM):
         # ESS
         
         df_ESS = pd.read_excel(system_data, sheet_name='ESS_Unit', header=0, index_col=0)
-        df_ESS = df_ESS.append(SAE)
+        df_ESS = df_ESS._append(SAE)
         
         def cycle_life_loss_curve(a,b,DoD,eol):
             return (1-eol)/(a*(DoD**(-b)))
@@ -156,7 +157,7 @@ def System_import(system_data,source,date1,date2,SAE,TRM):
         System_grid_data['Sys_load'] = df_Sys_Load
         System_grid_data['Sys_Reserve'] = df_Sys_Holgura
         
-        System_grid_data.to_csv('System_grid_data.csv', index=False)
+        print(System_grid_data)
 
     elif source == 'Otro':
     
@@ -192,7 +193,7 @@ def System_import(system_data,source,date1,date2,SAE,TRM):
         # ESS
         
         df_ESS = pd.read_excel(system_data, sheet_name='ESS_Unit', header=0, index_col=0)
-        df_ESS = df_ESS.append(SAE)
+        df_ESS = df_ESS._append(SAE)
         
         def cycle_life_loss_curve(a,b,DoD,eol):
             return (1-eol)/(a*(DoD**(-b)))
@@ -1047,8 +1048,8 @@ def MEM_general_model(System_data,Modelo,Input_data,restr_list,Current_direction
     else:
         from pyomo.opt import SolverFactory
         import pyomo.environ
-        # opt = SolverFactory('glpk')
-        opt = SolverFactory('cplex')
+        opt = SolverFactory('glpk')
+        # opt = SolverFactory('cplex')
         results = opt.solve(model)
         results.write()
         print("\nDisplaying Solution\n" + '-'*60)
@@ -1765,7 +1766,7 @@ def main_MEM(data1,Current_direction):
             TRM_final=st.number_input("Ingrese la TRM para la simulación [COP/USD]: ")
             
     elif source == 'Otro':
-        st.set_option('deprecation.showfileUploaderEncoding', False)
+        # st.set_option('deprecation.showfileUploaderEncoding', False)
         file_system = st.sidebar.file_uploader("Seleccione el archivo con el sistema a simular:", type=["csv","xlsx"])
         date1 = date.today()
         date2 = date.today()

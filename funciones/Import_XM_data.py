@@ -7,7 +7,7 @@
 from pydataxm import*
 import pandas as pd
 
-from datetime import*
+import datetime as dt
 import urllib.request
 import re
 
@@ -15,7 +15,7 @@ import re
 
 def date_data(date1,date2):
     numdays = abs((date2 - date1).days) + 1
-    dates = [date1 + timedelta(days=x) for x in range(numdays)]
+    dates = [date1 + dt.timedelta(days=x) for x in range(numdays)]
     date_list = [date_obj.strftime('%Y-%m-%d') for date_obj in dates]
     Hours = list(range(0,24))
     return date_list,Hours
@@ -153,7 +153,7 @@ def extract_offer_data(data_type,date):
 def Plant_offer_data(data_type,date1,date2):
     
     numdays = abs((date2 - date1).days) + 1
-    dates = [date1 + timedelta(days=x) for x in range(numdays)]
+    dates = [date1 + dt.timedelta(days=x) for x in range(numdays)]
     consult = pydataxm.ReadDB()
     df = consult.request_data("ListadoRecursos", "Agente", date1, date2)
     df2 = df[['Values_code1','Values_Value']]
@@ -181,7 +181,7 @@ def Plant_offer_data(data_type,date1,date2):
 def Holgura_data(date1,date2):
     
     numdays = abs((date2 - date1).days) + 1
-    dates = [date1 + timedelta(days=x) for x in range(numdays)]
+    dates = [date1 + dt.timedelta(days=x) for x in range(numdays)]
     data_type = 'HolAGC'
     hours_count = 0
     
