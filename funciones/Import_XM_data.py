@@ -21,27 +21,50 @@ def date_data(date1,date2):
     return date_list,Hours
 
 def Procces_hourly_data(df1,date1,date2,type_id):
+    # consult = pydataxm.ReadDB()
+    # date_list,Hours = date_data(date1,date2)
+    # df1.columns = Hours
+    # if type_id == 'Rec':
+    #     df = consult.request_data("ListadoRecursos", "Agente", date1, date2)
+    #     df2 = df[['Values_code1']]
+    # elif type_id == 'Sis':
+    #     df2 = pd.DataFrame()
+    #     df2['Values_code1'] = ['Sistema']
+    # hours_count = 0
+    # for d in date_list:
+    #     for h in Hours:
+    #         Values = []
+    #         for g in df2['Values_code1']:
+    #             try:   
+    #                 Values.append(df1.loc[(g,d),h])
+    #             except:
+    #                 Values.append(0)
+    #         df2[hours_count] = Values
+    #         hours_count = hours_count + 1
+    # df2 = df2.set_index('Values_code1')
+
     consult = pydataxm.ReadDB()
     date_list,Hours = date_data(date1,date2)
     df1.columns = Hours
     if type_id == 'Rec':
         df = consult.request_data("ListadoRecursos", "Agente", date1, date2)
-        df2 = df[['Values_code1']]
+        df2 = pd.DataFrame()
+        df2['Values_code'] = df[['Values_code2']]
     elif type_id == 'Sis':
         df2 = pd.DataFrame()
-        df2['Values_code1'] = ['Sistema']
+        df2['Values_code'] = ['Sistema']
     hours_count = 0
     for d in date_list:
         for h in Hours:
             Values = []
-            for g in df2['Values_code1']:
+            for g in df2['Values_code']:
                 try:   
                     Values.append(df1.loc[(g,d),h])
                 except:
                     Values.append(0)
             df2[hours_count] = Values
             hours_count = hours_count + 1
-    df2 = df2.set_index('Values_code1')
+    df2 = df2.set_index('Values_code')
     return df2
 
 def Dispo_Comercial(date1,date2):
@@ -151,18 +174,41 @@ def extract_offer_data(data_type,date):
         
     
 def Plant_offer_data(data_type,date1,date2):
-    
+    # numdays = abs((date2 - date1).days) + 1
+    # dates = [date1 + dt.timedelta(days=x) for x in range(numdays)]
+    # consult = pydataxm.ReadDB()
+    # df = consult.request_data("ListadoRecursos", "Agente", date1, date2)
+    # df2 = df[['Values_code1','Values_Value']]
+    # hours_count = 0
+    # for d in dates:
+    #     data = extract_offer_data(data_type,d)
+    #     for h in list(range(0,24)):
+    #         Values = []
+    #         for p in df2['Values_Value']:
+    #             p_name = p.replace(' ','')
+    #             if p_name in data.keys():
+    #                 if data_type == 'PAP':
+    #                     Values.append(data[p_name][0])
+    #                 else:
+    #                     Values.append(data[p_name][h])
+    #             else:
+    #                 Values.append(0)
+    #         df2[hours_count] = Values
+    #         hours_count = hours_count + 1
+    # df2 = df2.set_index('Values_code1')
+    # df2 = df2.drop(['Values_Value'], axis=1)
     numdays = abs((date2 - date1).days) + 1
     dates = [date1 + dt.timedelta(days=x) for x in range(numdays)]
     consult = pydataxm.ReadDB()
     df = consult.request_data("ListadoRecursos", "Agente", date1, date2)
-    df2 = df[['Values_code1','Values_Value']]
+    df2 = pd.DataFrame()
+    df2['Values_code'] = df[['Values_code2']]
     hours_count = 0
     for d in dates:
         data = extract_offer_data(data_type,d)
         for h in list(range(0,24)):
             Values = []
-            for p in df2['Values_Value']:
+            for p in df2['Values_code']:
                 p_name = p.replace(' ','')
                 if p_name in data.keys():
                     if data_type == 'PAP':
@@ -173,8 +219,7 @@ def Plant_offer_data(data_type,date1,date2):
                     Values.append(0)
             df2[hours_count] = Values
             hours_count = hours_count + 1
-    df2 = df2.set_index('Values_code1')
-    df2 = df2.drop(['Values_Value'], axis=1)
+    df2 = df2.set_index('Values_code')
     return df2
 
 
@@ -197,6 +242,13 @@ def Holgura_data(date1,date2):
     df2 = df2.set_index(pd.Index(['Total']))
     return df2
 
+
+##Verificación de indices de maquinas
+
+def indices_comunes(df1, df2):
+    """Verificación de indices de maquinas"""
+    df1 = df1[~df1.index.duplicated(keep='first')].fillna(0).loc[df1.index.intersection(df2.index)]
+    return df1
 
 # In[Main]
 

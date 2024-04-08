@@ -23,24 +23,37 @@ import requests
 def System_import(system_data,source,date1,date2,SAE,TRM):
     
     System_grid_data = {} 
-    
+    objetoAPI=pydataxm.ReadDB()
     
     if source == 'XM (Colombia)':
         
         df_Sys_data = pd.read_excel(system_data, sheet_name='System_data', header=0, index_col=0)
         df_Bus = pd.read_excel(system_data, sheet_name='Bus', header=0, index_col=0)
         
+
         # GEN
-        
         df_Gen_Unit = pd.read_excel(system_data, sheet_name='Gen_Unit', header=0, index_col=0)
+        
+        df_ListadoRecursos = objetoAPI.request_data("ListadoRecursos", "Agente", date1, date2) 
+        df_ListadoRecursos.set_index('Values_code2', inplace = True)
+        df_Gen_Unit = df_Gen_Unit.loc[df_ListadoRecursos.index.intersection(df_Gen_Unit.index)]
+
         df_Gen_energy_cost = Precio_Oferta(date1,date2)
         df_Gen_energy_cost = df_Gen_energy_cost.div(TRM)
+        df_Gen_energy_cost = indices_comunes(df_Gen_energy_cost, df_Gen_Unit)
+
         df_Gen_PAP_cost = Plant_offer_data('PAP',date1,date2)
         df_Gen_PAP_cost = df_Gen_PAP_cost.div(TRM)
+        df_Gen_PAP_cost = indices_comunes(df_Gen_PAP_cost, df_Gen_Unit)
+
         df_Gen_P_max = Dispo_Comercial(date1,date2)
-        print(df_Gen_P_max)
+        df_Gen_P_max = indices_comunes(df_Gen_P_max, df_Gen_Unit)
+
         df_Gen_P_min = Plant_offer_data('MO',date1,date2)
+        df_Gen_P_min = indices_comunes(df_Gen_P_min, df_Gen_Unit)
+
         df_Gen_R_max = Plant_offer_data('AGCP',date1,date2)
+        df_Gen_R_max = indices_comunes(df_Gen_R_max, df_Gen_Unit)
 
         G_idx = df_Gen_Unit.index.tolist()
         B_idx = df_Bus.index.tolist()    
@@ -159,6 +172,7 @@ def System_import(system_data,source,date1,date2,SAE,TRM):
         
         print(System_grid_data)
 
+
     elif source == 'Otro':
     
         df_Sys_data = pd.read_excel(system_data, sheet_name='System_data', header=0, index_col=0)
@@ -167,8 +181,23 @@ def System_import(system_data,source,date1,date2,SAE,TRM):
         # GEN
         
         df_Gen_Unit = pd.read_excel(system_data, sheet_name='Gen_Unit', header=0, index_col=0)
+
+        # df_Gen_energy_cost = pd.read_excel(system_data, sheet_name='Gen_Energy_cost', header=0, index_col=0)
+
+
         df_Gen_energy_cost = pd.read_excel(system_data, sheet_name='Gen_Energy_cost', header=0, index_col=0)
+        df_Gen_energy_cost = df_Gen_energy_cost.astype(float)
+        PrecOferDesp = objetoAPI.request_data("PrecOferDesp", "Recurso", dt.date(2021, 5, 5), dt.date(2021, 5, 5)).set_index('Values_code')
+        PrecOferDesp.drop(columns = ['Id', 'Date'], inplace=True)
+        PrecOferDesp = PrecOferDesp.mul(1000)
+        df_Gen_energy_cost.loc[PrecOferDesp.index] = PrecOferDesp.div(4000)
+
+
         df_Gen_PAP_cost = pd.read_excel(system_data, sheet_name='Gen_PAP_cost', header=0, index_col=0)
+        # df_Gen_PAP_cost_T = Plant_offer_data('PAP',date1,date2)
+        # df_Gen_PAP_cost_T = df_Gen_PAP_cost_T.div(4000)
+        # df_Gen_PAP_cost.loc[df_Gen_PAP_cost_T.index]=df_Gen_PAP_cost_T
+
         df_Gen_P_max = pd.read_excel(system_data, sheet_name='Gen_P_max', header=0, index_col=0)
         df_Gen_P_min = pd.read_excel(system_data, sheet_name='Gen_P_min', header=0, index_col=0)
         df_Gen_R_max = pd.read_excel(system_data, sheet_name='Gen_Reserve_max', header=0, index_col=0)
@@ -231,26 +260,57 @@ def System_import(system_data,source,date1,date2,SAE,TRM):
         ESS_map.set_index('ESS', inplace=True)
         ESS_map.index.name = None
         
+
+        ################################################################
+
+        # df_Branch = pd.read_excel(system_data, sheet_name='Branch', header=0, index_col=0)
+        
+        # L_idx = df_Branch.index.tolist()
+        # B_idx = df_Bus.index.tolist()
+        # Branch_map = pd.DataFrame()
+        # Branch_map['Branch'] = L_idx
+        
+        # for b in B_idx:
+        #     M = []
+        #     for l in L_idx:
+        #         if df_Branch.loc[l,'from'] == b:
+        #             M.append(1)
+        #         elif df_Branch.loc[l,'to'] == b:
+        #             M.append(-1)
+        #         else:
+        #             M.append(0)
+        #     Branch_map[b] = M
+        
+        # Branch_map.set_index('Branch', inplace=True)
+        # Branch_map.index.name = None
+
+        # Read data
         df_Branch = pd.read_excel(system_data, sheet_name='Branch', header=0, index_col=0)
-        
-        L_idx = df_Branch.index.tolist()
         B_idx = df_Bus.index.tolist()
-        Branch_map = pd.DataFrame()
-        Branch_map['Branch'] = L_idx
-        
+
+        # Initialize Branch_map DataFrame
+        Branch_map = pd.DataFrame(index=df_Branch.index)
+
+        # Create a list to store series
+        M_list = []
+
+        # Populate M_list
         for b in B_idx:
-            M = []
-            for l in L_idx:
-                if df_Branch.loc[l,'from'] == b:
-                    M.append(1)
-                elif df_Branch.loc[l,'to'] == b:
-                    M.append(-1)
-                else:
-                    M.append(0)
-            Branch_map[b] = M
-        
-        Branch_map.set_index('Branch', inplace=True)
+            M = pd.Series(0, index=df_Branch.index)
+            M[df_Branch['from'] == b] = 1
+            M[df_Branch['to'] == b] = -1
+            M_list.append(M)
+
+        # Concatenate all series in M_list along axis=1
+        Branch_map = pd.concat(M_list, axis=1)
+
+        # Reset index and rename columns
         Branch_map.index.name = None
+
+        # Optionally, you can set the 'Branch' column explicitly
+        Branch_map['Branch'] = Branch_map.index
+        Branch_map = Branch_map.set_index('Branch')
+        ################################################################
         
         df_Load = pd.read_excel(system_data, sheet_name='Load', header=0, index_col=0)
         df_Sys_Load = pd.read_excel(system_data, sheet_name='Sys_Load', header=0, index_col=0)
@@ -345,7 +405,6 @@ def MEM_general_model(System_data,Modelo,Input_data,restr_list,Current_direction
     model.p = RangeSet(0,Number_overestimating_planes-1)                                      # Overestimating planes
     model.m = RangeSet(0,Number_bits - 1)                                                     # Number of bits for binary expansion 
 
-    model.i.pprint()     
     #-------------------------------------------------------------------------------------------------------------------------------------------
     # PARAMETERS
     #------------------------------------------------------------------------------------------------------------------------------------------- 
@@ -459,18 +518,18 @@ def MEM_general_model(System_data,Modelo,Input_data,restr_list,Current_direction
     # DEGRADATION SEGMENT CURVE
     
     def DOD_seg_max(model,n,d):
-        return System_data['ESS_Unit']['Deg_x'][n][model.d.ord(d)]
+        return System_data['ESS_Unit'].loc[n,'Deg_x'][model.d.ord(d)]
     model.DOD_seg_max = Param(model.n,model.d, initialize = DOD_seg_max)
     
     def DOD_seg_min(model,n,d):
-        return System_data['ESS_Unit']['Deg_x'][n][model.d.ord(d)-1]
+        return System_data['ESS_Unit'].loc[n,'Deg_x'][model.d.ord(d)-1]
     model.DOD_seg_min = Param(model.n,model.d, initialize = DOD_seg_min)
     
     def Degracion_pendiente_seg(model,n,d):
         if model.d.ord(d) == 1:
             return 0
         else:
-            return (System_data['ESS_Unit']['Deg_y'][n][model.d.ord(d)] - System_data['ESS_Unit']['Deg_y'][n][model.d.ord(d)-1])/(System_data['ESS_Unit']['Deg_x'][n][model.d.ord(d)] - System_data['ESS_Unit']['Deg_x'][n][model.d.ord(d)-1])
+            return (System_data['ESS_Unit'].loc[n,'Deg_y'][model.d.ord(d)] - System_data['ESS_Unit'].loc[n,'Deg_y'][model.d.ord(d)-1])/(System_data['ESS_Unit']['Deg_x'][n][model.d.ord(d)] - System_data['ESS_Unit']['Deg_x'][n][model.d.ord(d)-1])
     model.Degra_m_seg = Param(model.n,model.d, initialize = Degracion_pendiente_seg)
     
     def Degracion_b_seg(model,n,d):
@@ -1039,7 +1098,7 @@ def MEM_general_model(System_data,Modelo,Input_data,restr_list,Current_direction
     
     if solver == 'CPLEX':
         from pyomo.opt import SolverFactory
-        import pyomo.environ
+        os.environ['NEOS_EMAIL'] = 'davquete@gmail.com'
         opt = SolverManagerFactory('neos')
         results = opt.solve(model, opt='cplex')
         #sends results to stdout
@@ -1047,10 +1106,18 @@ def MEM_general_model(System_data,Modelo,Input_data,restr_list,Current_direction
         print("\nDisplaying Solution\n" + '-'*60)
     else:
         from pyomo.opt import SolverFactory
-        import pyomo.environ
-        opt = SolverFactory('glpk')
+        # Set the number of threads for CBC solver
+        # os.environ['CBC_THREADS'] = '4'
+        solver = SolverFactory('cbc')
+        # solver.options['num_threads'] = 4
+        solver.options['ratio'] = 0.05
+        # solver.options = {'threads': 8, 'ratio': 0.038}
+        # solver.options = {'sec': 20, 'threads': 6, 'ratio': 0.07}
+        # solver = SolverFactory('glpk')
+        # solver.options['mipgap'] = 0.07  
         # opt = SolverFactory('cplex')
-        results = opt.solve(model)
+        results = solver.solve(model, tee=True)
+        #sends results to stdout
         results.write()
         print("\nDisplaying Solution\n" + '-'*60)
     
@@ -1227,7 +1294,7 @@ def MEM_general_model(System_data,Modelo,Input_data,restr_list,Current_direction
     with pd.ExcelWriter('{}/Resultados/{}.xlsx'.format(Current_direction,file_name)) as writer:
         for idx in Output_data.keys():
             Output_data[idx].to_excel(writer, sheet_name= idx, index = True)
-        writer.save()
+        writer._save()
         # writer.close()    
     
 
@@ -1785,7 +1852,7 @@ def main_MEM(data1,Current_direction):
             st.sidebar.write('**Restricciones base**')
             st.sidebar.write('Límites de generación\n\n','Balance de potencia\n\n', 'Sistemas de Almacenamiento de Energía')
             st.sidebar.write('**Restricciones adicionales**')
-            restr_list = st.sidebar.multiselect(label='', options=sorted(restr_list_compl), default=restr_list_compl)
+            restr_list = st.sidebar.multiselect(label='box_res',label_visibility="hidden", options=sorted(restr_list_compl), default=restr_list_compl)
         else:
             restr_list = restr_list_compl 
     

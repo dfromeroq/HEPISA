@@ -77,7 +77,7 @@ data3=load_data3()
 st.sidebar.image('Imagenes/logo-geb.png', use_column_width='auto' )
 st.sidebar.title("Herramienta para el Planeamiento e Integración de Sistemas de Almacenamiento -HEPISA")
 st.sidebar.subheader("Elija el tipo de análisis que quiere efectuar:")
-study = st.sidebar.selectbox('',('INICIO','Dimensionamiento y Localización','Operación del SAE (MEM-SC, XM)','Análisis financiero','Análisis eléctricos'))
+study = st.sidebar.selectbox('Inicio',('INICIO','Dimensionamiento y Localización','Operación del SAE (MEM-SC, XM)','Análisis financiero','Análisis eléctricos'),label_visibility="hidden")
 
 if study =='INICIO':
     st.markdown("<h1 style='text-align: center; color: black;'>Herramienta para el Planeamiento e Integración de Sistemas de Almacenamiento - HEPISA</h1>", unsafe_allow_html=True)
